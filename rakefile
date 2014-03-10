@@ -72,18 +72,29 @@ directory DOT_BUNDLE_DIR => DOT_VIM_DIR
 
 directory DOT_AFTER_FTPLUGIN_DIR => DOT_VIM_DIR
 
+#
+# Make sure pathogen is in the autoload directory.
+#
 file File.join(DOT_AUTOLOAD_DIR, "pathogen.vim") => DOT_AUTOLOAD_DIR do
   sh "curl -Sso #{File.join(DOT_AUTOLOAD_DIR, "pathogen.vim")} https://raw.github.com/tpope/vim-pathogen/master/autoload/pathogen.vim"
 end
 
+#
+# Make sure the .vimrc is there
+#
 file DOT_VIMRC do
   File.open(DOT_VIMRC, "w") do |f|
     f.puts VIMRC
   end
 end
 
+desc 'Verify that all vim stuff is present, create if not'
 task :default => [ File.join(DOT_AUTOLOAD_DIR, "pathogen.vim"), DOT_BUNDLE_DIR, DOT_VIMRC ]
 
+#
+# Create directory tasks for each of the bundles we want installed.
+# Also, register the directory as a dependency of the default task.
+#
 BUNDLES.each_pair do | bundle_name, repository |
   bundle_path = File.join(DOT_BUNDLE_DIR, bundle_name)
   directory bundle_path => DOT_BUNDLE_DIR do
@@ -93,6 +104,10 @@ BUNDLES.each_pair do | bundle_name, repository |
   task :default => bundle_path
 end
 
+#
+# Create file tasks for each of the plugin configs we have defined.
+# Also, register the plugin file as a dependency of the default task.
+#
 FTPLUGINS.each_pair do | plugin_name, content |
   plugin_path = File.join(DOT_AFTER_FTPLUGIN_DIR, plugin_name)
   file plugin_path => DOT_AFTER_FTPLUGIN_DIR do

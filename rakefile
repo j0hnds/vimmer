@@ -1,0 +1,105 @@
+# -*- ruby -*-
+#
+# A rake file to manage the vim directory for you
+
+DOT_VIMRC = File.join(ENV['HOME'], '.vimrc')
+DOT_VIM_DIR = File.join(ENV['HOME'], ".vim")
+DOT_AUTOLOAD_DIR = File.join(DOT_VIM_DIR, "autoload")
+DOT_BUNDLE_DIR = File.join(DOT_VIM_DIR, "bundle")
+DOT_AFTER_FTPLUGIN_DIR = File.join(DOT_VIM_DIR, "after/ftplugin")
+
+#
+# Add any bundles that need to be pulled from github here
+#
+BUNDLES = {
+	'ctrlp.vim' => 'https://github.com/kien/ctrlp.vim.git',
+	'nerdcommenter' => 'git@github.com:scrooloose/nerdcommenter.git',
+	'nerdtree' => 'git@github.com:scrooloose/nerdtree.git',
+	'rgrep.vim' => 'git@github.com:rosenfeld/rgrep.vim.git',
+	'vim-bundler' => 'git://github.com/tpope/vim-bundler.git',
+	'vim-fugitive' => 'git@github.com:tpope/vim-fugitive.git',
+	'vim-rails' => 'git://github.com/tpope/vim-rails.git',
+	'vim-sensible' => 'git://github.com/tpope/vim-sensible.git'
+}
+
+# 
+# If you have changes you want to make to the .vimrc, put them
+# here
+#
+VIMRC = <<-EOV
+execute pathogen#infect()
+syntax on
+filetype plugin indent on
+
+" Set up the mapping where ';;' is the same as <esc>
+map! ;; <esc>
+
+" Set up CtrlP
+set runtimepath^=~/.vim/bundle/ctrlp.vim
+
+" Set up VimGrep
+set grepprg=grep\\ -nrI\\ --exclude-dir=.git\\ --exclude-dir=target\\ --exclude-dir=tmp\\ --exclude-dir=log\\ --exclude="*.min.js"\\ --exclude="*.log"\\ $*\\ /dev/null
+EOV
+
+#
+# All the ftplugin files should be here
+#
+RUBY_FT = <<-EOFT
+set expandtab
+set tabstop=2 shiftwidth=2 softtabstop=2
+set autoindent
+EOFT
+
+SH_FT = <<-EOSHFT
+set expandtab
+set tabstop=2 shiftwidth=2 softtabstop=2
+set autoindent
+EOSHFT
+
+FTPLUGINS = {
+	'ruby.vim' => RUBY_FT,
+  'sh.vim' => SH_FT
+}
+
+# 
+# All the directories we need
+#
+directory DOT_VIM_DIR
+
+directory DOT_AUTOLOAD_DIR => DOT_VIM_DIR
+
+directory DOT_BUNDLE_DIR => DOT_VIM_DIR
+
+directory DOT_AFTER_FTPLUGIN_DIR => DOT_VIM_DIR
+
+file File.join(DOT_AUTOLOAD_DIR, "pathogen.vim") => DOT_AUTOLOAD_DIR do
+  sh "curl -Sso #{File.join(DOT_AUTOLOAD_DIR, "pathogen.vim")} https://raw.github.com/tpope/vim-pathogen/master/autoload/pathogen.vim"
+end
+
+file DOT_VIMRC do
+  File.open(DOT_VIMRC, "w") do |f|
+    f.puts VIMRC
+  end
+end
+
+task :default => [ File.join(DOT_AUTOLOAD_DIR, "pathogen.vim"), DOT_BUNDLE_DIR, DOT_VIMRC ]
+
+BUNDLES.each_pair do | bundle_name, repository |
+  bundle_path = File.join(DOT_BUNDLE_DIR, bundle_name)
+  directory bundle_path => DOT_BUNDLE_DIR do
+    sh "cd #{DOT_BUNDLE_DIR}; git clone #{repository}"
+  end
+
+  task :default => bundle_path
+end
+
+FTPLUGINS.each_pair do | plugin_name, content |
+  plugin_path = File.join(DOT_AFTER_FTPLUGIN_DIR, plugin_name)
+  file plugin_path => DOT_AFTER_FTPLUGIN_DIR do
+    File.open(plugin_path, "w") do |f|
+      f.write content
+    end
+  end
+
+  task :default => plugin_path
+end
